@@ -1,0 +1,3 @@
+*.o
+femu-simbricks
+Makefile.local
