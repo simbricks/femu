@@ -51,7 +51,11 @@ static void nvme_process_sq_io(void *opaque, int index_poller)
     while (!(nvme_sq_empty(sq))) {
         if (sq->phys_contig) {
             addr = sq->dma_addr + sq->head * n->sqe_size;
-            nvme_copy_cmd(&cmd, (void *)&(((NvmeCmd *)sq->dma_addr_hva)[sq->head]));
+            if (sq->dma_addr_hva)
+                nvme_copy_cmd(&cmd,
+                    (void *)&(((NvmeCmd *)sq->dma_addr_hva)[sq->head]));
+            else
+                nvme_addr_read(n, addr, (void *)&cmd, sizeof(cmd));
         } else {
             addr = nvme_discontig(sq->prp_list, sq->head, n->page_size,
                                   n->sqe_size);
@@ -111,7 +115,10 @@ static void nvme_post_cqe(NvmeCQueue *cq, NvmeRequest *req)
 
     if (cq->phys_contig) {
         addr = cq->dma_addr + cq->tail * n->cqe_size;
-        ((NvmeCqe *)cq->dma_addr_hva)[cq->tail] = *cqe;
+        if (cq->dma_addr_hva)
+            ((NvmeCqe *)cq->dma_addr_hva)[cq->tail] = *cqe;
+        else
+            nvme_addr_write(n, addr, (void *)cqe, sizeof(*cqe));
     } else {
         addr = nvme_discontig(cq->prp_list, cq->tail, n->page_size, n->cqe_size);
         nvme_addr_write(n, addr, (void *)cqe, sizeof(*cqe));

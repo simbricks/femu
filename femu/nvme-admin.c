@@ -233,18 +233,22 @@ static uint16_t nvme_set_db_memory(FemuCtrl *n, const NvmeCmd *cmd)
         if (sq) {
             /* Submission queue tail pointer location, 2 * QID * stride. */
             sq->db_addr = dbs_addr + 2 * i * dbbuf_entry_sz;
-            sq->db_addr_hva = n->dbs_addr_hva + 2 * i * dbbuf_entry_sz;
+            sq->db_addr_hva = (n->dbs_addr_hva ?
+                n->dbs_addr_hva + 2 * i * dbbuf_entry_sz : 0);
             sq->eventidx_addr = eis_addr + 2 * i * dbbuf_entry_sz;
-            sq->eventidx_addr_hva = n->eis_addr_hva + 2 * i * dbbuf_entry_sz;
+            sq->eventidx_addr_hva = (n->eis_addr_hva ?
+                n->eis_addr_hva + 2 * i * dbbuf_entry_sz : 0);
             femu_debug("DBBUF,sq[%d]:db=%" PRIu64 ",ei=%" PRIu64 "\n", i,
                     sq->db_addr, sq->eventidx_addr);
         }
         if (cq) {
             /* Completion queue head pointer location, (2 * QID + 1) * stride. */
             cq->db_addr = dbs_addr + (2 * i + 1) * dbbuf_entry_sz;
-            cq->db_addr_hva = n->dbs_addr_hva + (2 * i + 1) * dbbuf_entry_sz;
+            cq->db_addr_hva = (n->dbs_addr_hva ?
+                n->dbs_addr_hva + (2 * i + 1) * dbbuf_entry_sz : 0);
             cq->eventidx_addr = eis_addr + (2 * i + 1) * dbbuf_entry_sz;
-            cq->eventidx_addr_hva = n->eis_addr_hva + (2 * i + 1) * dbbuf_entry_sz;
+            cq->eventidx_addr_hva = (n->eis_addr_hva ?
+                n->eis_addr_hva + (2 * i + 1) * dbbuf_entry_sz : 0);
             femu_debug("DBBUF,cq[%d]:db=%" PRIu64 ",ei=%" PRIu64 "\n", i,
                     cq->db_addr, cq->eventidx_addr);
         }
