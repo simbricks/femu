@@ -1,6 +1,7 @@
 #ifndef __FEMU_NVME_H
 #define __FEMU_NVME_H
 
+#ifndef FEMU_SIMBRICKS
 #include "qemu/osdep.h"
 #include "qemu/uuid.h"
 #include "qemu/units.h"
@@ -10,6 +11,9 @@
 #include "hw/virtio/vhost.h"
 #include "qapi/error.h"
 #include "sysemu/kvm.h"
+#else
+#include "../qemu-compat.h"
+#endif
 
 #include "backend/dram.h"
 #include "inc/rte_ring.h"
