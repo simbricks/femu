@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#include "lib/simbricks/proto/pcie.h"
+#include "simbricks/proto/pcie.h"
 #include "../qemu-compat.h"
 
 struct dma_op {

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "lib/simbricks/nicif/nicif.h"
+#include "simbricks/nicif/nicif.h"
 
 struct SimbricksProtoPcieDevIntro dev_intro;
 static struct SimbricksNicIf nicif;
