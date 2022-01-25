@@ -1,3 +1,4 @@
 *.o
 femu-simbricks
 Makefile.local
+ready
