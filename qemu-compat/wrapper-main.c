@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "simbricks/nicif/nicif.h"
+#include "simbricks/pcie/if.h"
 
 struct SimbricksProtoPcieDevIntro dev_intro;
 static struct SimbricksNicIf nicif;
@@ -56,12 +57,11 @@ static void mmio_write(volatile struct SimbricksProtoPcieH2DWrite *w)
     volatile struct SimbricksProtoPcieD2HWritecomp *wc;
 
     // send completion immediately
-    while ((d2h = SimbricksNicIfD2HAlloc(&nicif, 0)) == NULL);
+    while ((d2h = SimbricksPcieIfD2HOutAlloc(&nicif.pcie, 0)) == NULL);
     wc = &d2h->writecomp;
     wc->req_id = w->req_id;
-    // TODO: barrier
-    wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
 
     volatile struct sb2qemu *sb2q = &sb2q_q[sb2q_tail];
     while (sb2q->ready);
@@ -101,9 +101,10 @@ static void *simbricks_thread(void *unused)
 
     while (1) {
         volatile union SimbricksProtoPcieH2D *msg =
-            SimbricksNicIfH2DPoll(&nicif, 0);
+            SimbricksPcieIfH2DInPoll(&nicif.pcie, 0);
         if (msg) {
-            uint8_t type = msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK;
+            // uint8_t type = msg->base.header.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK;
+            uint8_t type = SimbricksPcieIfH2DInType(&nicif.pcie, msg);
             switch (type) {
                 case SIMBRICKS_PROTO_PCIE_H2D_MSG_READ:
                     mmio_read(&msg->read);
@@ -136,15 +137,14 @@ static void *simbricks_thread(void *unused)
                     abort();
             }
 
-            SimbricksNicIfH2DDone(&nicif, msg);
-            SimbricksNicIfH2DNext(&nicif);
+            SimbricksPcieIfH2DInDone(&nicif.pcie, msg);
         }
 
         volatile struct qemu2sb *q2sb = &q2sb_q[q2sb_head];
         if (q2sb->ready) {
             volatile union SimbricksProtoPcieD2H *d2h;
             struct dma_op *op;
-            while ((d2h = SimbricksNicIfD2HAlloc(&nicif, 0)) == NULL);
+            while ((d2h = SimbricksPcieIfD2HOutAlloc(&nicif.pcie, 0)) == NULL);
 
             switch (q2sb->type) {
                 case Q2SB_MMIO_READ_COMP:
@@ -153,9 +153,10 @@ static void *simbricks_thread(void *unused)
                     d2h->readcomp.req_id = q2sb->mmio_read_compl.req_id;
                     *((volatile uint64_t *) d2h->readcomp.data) =
                         q2sb->mmio_read_compl.data;
-                    d2h->readcomp.own_type =
-                        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
-                        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    // d2h->readcomp.own_type =
+                    //     SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
+                    //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
                     break;
 
                 case Q2SB_DMA_READ:
@@ -164,9 +165,10 @@ static void *simbricks_thread(void *unused)
                     d2h->read.req_id = (uint64_t) op;
                     d2h->read.offset = op->hwaddr;
                     d2h->read.len = op->len;
-                    d2h->readcomp.own_type =
-                        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ |
-                        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    // d2h->readcomp.own_type =
+                    //     SIMBRICKS_PROTO_PCIE_D2H_MSG_READ |
+                    //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
                     break;
 
                 case Q2SB_DMA_WRITE:
@@ -175,14 +177,15 @@ static void *simbricks_thread(void *unused)
                     d2h->write.req_id = 0;
                     d2h->write.offset = op->hwaddr;
                     d2h->write.len = op->len;
-                    assert(sizeof(d2h) + op->len <= dev_intro.d2h_elen);
+                    assert(sizeof(d2h) + op->len <= nicif.pcie.base.out_elen);
                     memcpy((void *) d2h->write.data, op->data, op->len);
 
                     op->ready = true;
 
-                    d2h->readcomp.own_type =
-                        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE |
-                        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    // d2h->readcomp.own_type =
+                    //     SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE |
+                    //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
                     break;
 
                 case Q2SB_INT:
@@ -190,9 +193,10 @@ static void *simbricks_thread(void *unused)
                     //        q2sb->intr.vector, q2sb->intr.inttype);
                     d2h->interrupt.vector = q2sb->intr.vector;
                     d2h->interrupt.inttype = q2sb->intr.inttype;
-                    d2h->interrupt.own_type =
-                        SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-                        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    // d2h->interrupt.own_type =
+                    //     SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
+                    //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
                     break;
 
                 default:
@@ -218,15 +222,15 @@ int main(int argc, char *argv[])
 
     
 
-    struct SimbricksNicIfParams params;
-    memset(&params, 0, sizeof(params));
-    params.pci_socket_path = argv[1];
-    params.shm_path = argv[2];
+    struct SimbricksBaseIfParams params;
+    SimbricksPcieIfDefaultParams(&params);
 
+    params.sock_path = argv[1];
+    const char *shmPath = argv[2];
     qemu_main_init();
     translate_dev_intro();
 
-    if (SimbricksNicIfInit(&nicif, &params, &dev_intro) != 0) {
+    if (SimbricksNicIfInit(&nicif, shmPath, NULL, &params, &dev_intro) != 0) {
         fprintf(stderr, "NicIf Init failed\n");
         return EXIT_FAILURE;
     }
