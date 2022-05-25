@@ -192,8 +192,8 @@ static void *simbricks_thread(void *unused)
                     break;
 
                 case Q2SB_INT:
-                    fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
-                            q2sb->intr.vector, q2sb->intr.inttype);
+                    /*fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
+                            q2sb->intr.vector, q2sb->intr.inttype);*/
                     d2h->interrupt.vector = q2sb->intr.vector;
                     d2h->interrupt.inttype = q2sb->intr.inttype;
                     // d2h->interrupt.own_type =
