@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
 
     struct SimbricksBaseIfParams params;
     SimbricksPcieIfDefaultParams(&params);
-
+    params.sync_mode = kSimbricksBaseIfSyncDisabled;
     params.sock_path = argv[1];
     const char *shmPath = argv[2];
     qemu_main_init();
