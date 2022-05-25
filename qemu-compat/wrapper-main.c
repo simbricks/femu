@@ -156,7 +156,8 @@ static void *simbricks_thread(void *unused)
                     // d2h->readcomp.own_type =
                     //     SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
                     //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
-                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h,
+                        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
                     break;
 
                 case Q2SB_DMA_READ:
@@ -168,7 +169,8 @@ static void *simbricks_thread(void *unused)
                     // d2h->readcomp.own_type =
                     //     SIMBRICKS_PROTO_PCIE_D2H_MSG_READ |
                     //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
-                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h,
+                        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
                     break;
 
                 case Q2SB_DMA_WRITE:
@@ -185,18 +187,20 @@ static void *simbricks_thread(void *unused)
                     // d2h->readcomp.own_type =
                     //     SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE |
                     //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
-                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h,
+                        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
                     break;
 
                 case Q2SB_INT:
-                    //fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
-                    //        q2sb->intr.vector, q2sb->intr.inttype);
+                    fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
+                            q2sb->intr.vector, q2sb->intr.inttype);
                     d2h->interrupt.vector = q2sb->intr.vector;
                     d2h->interrupt.inttype = q2sb->intr.inttype;
                     // d2h->interrupt.own_type =
                     //     SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
                     //     SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
-                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h, SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
+                    SimbricksPcieIfD2HOutSend(&nicif.pcie, d2h,
+                        SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
                     break;
 
                 default:
