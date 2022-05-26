@@ -1493,6 +1493,9 @@ static inline uint16_t nvme_check_mdts(FemuCtrl *n, size_t len)
 #define femu_err(fmt, ...) \
     do { fprintf(stderr, "[FEMU] Err: " fmt, ## __VA_ARGS__); } while (0)
 
+#define femu_warn(fmt, ...) \
+    do { fprintf(stderr, "[FEMU] Warn: " fmt, ## __VA_ARGS__); } while (0)
+
 #define femu_log(fmt, ...) \
     do { printf("[FEMU] Log: " fmt, ## __VA_ARGS__); } while (0)
 
