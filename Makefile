@@ -15,7 +15,7 @@ CPPFLAGS := -DFEMU_SIMBRICKS -Iinclude/ $(EXTRA_CPPFLAGS)
 CFLAGS := -Wall -Wno-sign-compare -Wno-int-conversion \
 	-Wno-implicit-fallthrough -g -O0 $(EXTRA_CFLAGS)
 LDFLAGS := -g $(EXTRA_LDFLAGS)
-LDLIBS := -lnicif -lpcie -lbase -lpthread $(EXTRA_LDLIBS)
+LDLIBS := -lnicif -lpcie -lbase -lpthread -lparser $(EXTRA_LDLIBS)
 
 all: $(bin_femu)
 

@@ -6,6 +6,7 @@
 
 #include "simbricks/nicif/nicif.h"
 #include "simbricks/pcie/if.h"
+#include "simbricks/parser/parser.h"
 
 struct SimbricksProtoPcieDevIntro dev_intro;
 static struct SimbricksNicIf nicif;
@@ -18,6 +19,7 @@ volatile bool sb_intx_en = false;
 volatile bool sb_msi_en = false;
 volatile bool sb_msix_en = false;
 
+#define DEBUD_FEMU 0
 
 static void translate_dev_intro(void)
 {
@@ -31,7 +33,9 @@ static void translate_dev_intro(void)
 
 static void mmio_read(volatile struct SimbricksProtoPcieH2DRead *r)
 {
-    //fprintf(stderr, "sb: mmio_read: enter (%ld)\n", r->req_id);
+#if DEBUD_FEMU
+    fprintf(stderr, "sb: mmio_read: enter (%ld)\n", r->req_id);
+#endif
 
     volatile struct sb2qemu *sb2q = &sb2q_q[sb2q_tail];
     while (sb2q->ready);
@@ -46,12 +50,16 @@ static void mmio_read(volatile struct SimbricksProtoPcieH2DRead *r)
     sb2q->ready = true;
     sb2q_tail = (sb2q_tail + 1) % SB2Q_SZ;
 
-    //fprintf(stderr, "sb: mmio_read: exit\n");
+#if DEBUD_FEMU
+    fprintf(stderr, "sb: mmio_read: exit\n");
+#endif
 }
 
 static void mmio_write(volatile struct SimbricksProtoPcieH2DWrite *w)
 {
-    //fprintf(stderr, "sb: mmio_write: enter\n");
+#if DEBUD_FEMU
+    fprintf(stderr, "sb: mmio_write: enter\n");
+#endif
 
     volatile union SimbricksProtoPcieD2H *d2h;
     volatile struct SimbricksProtoPcieD2HWritecomp *wc;
@@ -78,13 +86,17 @@ static void mmio_write(volatile struct SimbricksProtoPcieH2DWrite *w)
     sb2q->ready = true;
     sb2q_tail = (sb2q_tail + 1) % SB2Q_SZ;
 
-    //fprintf(stderr, "sb: mmio_write: exit\n");
+#if DEBUD_FEMU
+    fprintf(stderr, "sb: mmio_write: exit\n");
+#endif
 }
 
 static void dma_read_comp(volatile struct SimbricksProtoPcieH2DReadcomp *rc)
 {
     struct dma_op *op = (void *) rc->req_id;
-    //fprintf(stderr, "dma_read_comp op=%p\n", op);
+#if DEBUD_FEMU
+    fprintf(stderr, "dma_read_comp op=%p\n", op);
+#endif
     memcpy(op->data, (const void *) rc->data, op->len);
 
     op->ready = true;
@@ -92,7 +104,9 @@ static void dma_read_comp(volatile struct SimbricksProtoPcieH2DReadcomp *rc)
 
 static void dma_write_comp(volatile struct SimbricksProtoPcieH2DWritecomp *wc)
 {
-    //fprintf(stderr, "dma_write_comp\n");
+#if DEBUD_FEMU
+    fprintf(stderr, "dma_write_comp\n");
+#endif
 }
 
 static void *simbricks_thread(void *unused)
@@ -134,7 +148,7 @@ static void *simbricks_thread(void *unused)
                 default:
                     fprintf(stderr, "sbt: unhandled simbricks message type: %x\n",
                         type);
-                    abort();
+                    // abort();
             }
 
             SimbricksPcieIfH2DInDone(&nicif.pcie, msg);
@@ -148,9 +162,11 @@ static void *simbricks_thread(void *unused)
 
             switch (q2sb->type) {
                 case Q2SB_MMIO_READ_COMP:
-                    /*fprintf(stderr, "sbt: read compl id=%ld\n",
-                        q2sb->mmio_read_compl.req_id);*/
-                    d2h->readcomp.req_id = q2sb->mmio_read_compl.req_id;
+#if DEBUD_FEMU
+                    fprintf(stderr, "sbt: read compl id=%ld\n",
+                        q2sb->mmio_read_compl.req_id);
+#endif
+                        d2h->readcomp.req_id = q2sb->mmio_read_compl.req_id;
                     *((volatile uint64_t *) d2h->readcomp.data) =
                         q2sb->mmio_read_compl.data;
                     // d2h->readcomp.own_type =
@@ -162,7 +178,9 @@ static void *simbricks_thread(void *unused)
 
                 case Q2SB_DMA_READ:
                     op = q2sb->dma.op;
-                    //fprintf(stderr, "sbt: dma read op=%p addr=%lx len=%zu\n", op, op->hwaddr, op->len);
+#if DEBUD_FEMU
+                    fprintf(stderr, "sbt: dma read op=%p addr=%lx len=%zu\n", op, op->hwaddr, op->len);
+#endif
                     d2h->read.req_id = (uint64_t) op;
                     d2h->read.offset = op->hwaddr;
                     d2h->read.len = op->len;
@@ -175,7 +193,9 @@ static void *simbricks_thread(void *unused)
 
                 case Q2SB_DMA_WRITE:
                     op = q2sb->dma.op;
-                    //fprintf(stderr, "sbt: dma write op=%p addr=%lx len=%zu\n", op, op->hwaddr, op->len);
+#if DEBUD_FEMU
+                    fprintf(stderr, "sbt: dma write op=%p addr=%lx len=%zu\n", op, op->hwaddr, op->len);
+#endif
                     d2h->write.req_id = 0;
                     d2h->write.offset = op->hwaddr;
                     d2h->write.len = op->len;
@@ -192,8 +212,10 @@ static void *simbricks_thread(void *unused)
                     break;
 
                 case Q2SB_INT:
-                    /*fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
-                            q2sb->intr.vector, q2sb->intr.inttype);*/
+#if DEBUD_FEMU
+                    fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
+                            q2sb->intr.vector, q2sb->intr.inttype);
+#endif
                     d2h->interrupt.vector = q2sb->intr.vector;
                     d2h->interrupt.inttype = q2sb->intr.inttype;
                     // d2h->interrupt.own_type =
@@ -206,12 +228,14 @@ static void *simbricks_thread(void *unused)
                 default:
                     fprintf(stderr, "sbt: unhandled qemu message type: %x\n",
                         q2sb->type);
-                    abort();
+                    // abort();
             }
 
             q2sb->ready = false;
             q2sb_head = (q2sb_head + 1) % Q2SB_SZ;
-            //fprintf(stderr, "sbt: qemu msg done\n");
+#if DEBUD_FEMU
+            fprintf(stderr, "sbt: qemu msg done\n");
+#endif
         }
 
     }
@@ -219,18 +243,23 @@ static void *simbricks_thread(void *unused)
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s PCI-SOCKET SHM\n", argv[0]);
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s PCI-PARAMS\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    
-
     struct SimbricksBaseIfParams params;
+    struct SimbricksAdapterParams *pcieAdapterParams = NULL;
+    pcieAdapterParams = SimbricksParametersParse(argv[1]);
+    if (!pcieAdapterParams) {
+        fprintf(stderr, "Failed to parse PCIe parameters\n");
+        return EXIT_FAILURE;
+    }
+
     SimbricksPcieIfDefaultParams(&params);
     params.sync_mode = kSimbricksBaseIfSyncDisabled;
-    params.sock_path = argv[1];
-    const char *shmPath = argv[2];
+    params.sock_path = pcieAdapterParams->socket_path;
+    const char *shmPath = pcieAdapterParams->shm_path;
     qemu_main_init();
     translate_dev_intro();
 
