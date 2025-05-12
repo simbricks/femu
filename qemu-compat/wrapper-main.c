@@ -19,7 +19,7 @@ volatile bool sb_intx_en = false;
 volatile bool sb_msi_en = false;
 volatile bool sb_msix_en = false;
 
-#define DEBUD_FEMU 0
+#define DEBUG_FEMU 0
 
 static void translate_dev_intro(void)
 {
@@ -33,7 +33,7 @@ static void translate_dev_intro(void)
 
 static void mmio_read(volatile struct SimbricksProtoPcieH2DRead *r)
 {
-#if DEBUD_FEMU
+#if DEBUG_FEMU
     fprintf(stderr, "sb: mmio_read: enter (%ld)\n", r->req_id);
 #endif
 
@@ -50,14 +50,14 @@ static void mmio_read(volatile struct SimbricksProtoPcieH2DRead *r)
     sb2q->ready = true;
     sb2q_tail = (sb2q_tail + 1) % SB2Q_SZ;
 
-#if DEBUD_FEMU
+#if DEBUG_FEMU
     fprintf(stderr, "sb: mmio_read: exit\n");
 #endif
 }
 
 static void mmio_write(volatile struct SimbricksProtoPcieH2DWrite *w)
 {
-#if DEBUD_FEMU
+#if DEBUG_FEMU
     fprintf(stderr, "sb: mmio_write: enter\n");
 #endif
 
@@ -86,7 +86,7 @@ static void mmio_write(volatile struct SimbricksProtoPcieH2DWrite *w)
     sb2q->ready = true;
     sb2q_tail = (sb2q_tail + 1) % SB2Q_SZ;
 
-#if DEBUD_FEMU
+#if DEBUG_FEMU
     fprintf(stderr, "sb: mmio_write: exit\n");
 #endif
 }
@@ -94,7 +94,7 @@ static void mmio_write(volatile struct SimbricksProtoPcieH2DWrite *w)
 static void dma_read_comp(volatile struct SimbricksProtoPcieH2DReadcomp *rc)
 {
     struct dma_op *op = (void *) rc->req_id;
-#if DEBUD_FEMU
+#if DEBUG_FEMU
     fprintf(stderr, "dma_read_comp op=%p\n", op);
 #endif
     memcpy(op->data, (const void *) rc->data, op->len);
@@ -104,7 +104,7 @@ static void dma_read_comp(volatile struct SimbricksProtoPcieH2DReadcomp *rc)
 
 static void dma_write_comp(volatile struct SimbricksProtoPcieH2DWritecomp *wc)
 {
-#if DEBUD_FEMU
+#if DEBUG_FEMU
     fprintf(stderr, "dma_write_comp\n");
 #endif
 }
@@ -162,7 +162,7 @@ static void *simbricks_thread(void *unused)
 
             switch (q2sb->type) {
                 case Q2SB_MMIO_READ_COMP:
-#if DEBUD_FEMU
+#if DEBUG_FEMU
                     fprintf(stderr, "sbt: read compl id=%ld\n",
                         q2sb->mmio_read_compl.req_id);
 #endif
@@ -178,7 +178,7 @@ static void *simbricks_thread(void *unused)
 
                 case Q2SB_DMA_READ:
                     op = q2sb->dma.op;
-#if DEBUD_FEMU
+#if DEBUG_FEMU
                     fprintf(stderr, "sbt: dma read op=%p addr=%lx len=%zu\n", op, op->hwaddr, op->len);
 #endif
                     d2h->read.req_id = (uint64_t) op;
@@ -193,7 +193,7 @@ static void *simbricks_thread(void *unused)
 
                 case Q2SB_DMA_WRITE:
                     op = q2sb->dma.op;
-#if DEBUD_FEMU
+#if DEBUG_FEMU
                     fprintf(stderr, "sbt: dma write op=%p addr=%lx len=%zu\n", op, op->hwaddr, op->len);
 #endif
                     d2h->write.req_id = 0;
@@ -212,7 +212,7 @@ static void *simbricks_thread(void *unused)
                     break;
 
                 case Q2SB_INT:
-#if DEBUD_FEMU
+#if DEBUG_FEMU
                     fprintf(stderr, "sbt: interrupt vec=%u ty=%u\n",
                             q2sb->intr.vector, q2sb->intr.inttype);
 #endif
@@ -233,7 +233,7 @@ static void *simbricks_thread(void *unused)
 
             q2sb->ready = false;
             q2sb_head = (q2sb_head + 1) % Q2SB_SZ;
-#if DEBUD_FEMU
+#if DEBUG_FEMU
             fprintf(stderr, "sbt: qemu msg done\n");
 #endif
         }
